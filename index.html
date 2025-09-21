@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jadwal Produktif Mahasiswa Informatika</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Soft Blue accent -->
+    <!-- Application Structure Plan: The application uses a tab-based navigation for "Jadwal Mingguan" and "Alokasi Waktu". This structure was chosen to separate the detailed schedule from the high-level summary, allowing the user to focus on one aspect at a time. The weekly view provides an immediate, actionable plan, while the chart offers a strategic overview of how time is spent. User interaction is centered on selecting days to view details, making exploration intuitive. This dashboard approach is more effective than a simple list as it provides both tactical and strategic perspectives on productivity. -->
+    <!-- Visualization & Content Choices: Report Info: Daily/Weekly student schedule. Goal: Organize and Visualize time. Viz/Presentation Method: An interactive HTML table for the weekly schedule and a Doughnut chart (Chart.js/Canvas) for time allocation. Interaction: Users can click on day tabs to filter the detailed schedule. Justification: The table provides a clear, structured view of daily tasks. The doughnut chart is excellent for showing proportions and instantly communicating how different life areas are balanced (study, self-development, rest, etc.), which is highly motivational. This combination helps in planning and reflection without information overload. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #fdfaf6;
+            color: #4a4a4a;
+        }
+        .card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+        }
+        .tab-button {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .tab-button.active {
+            background-color: #8ab4f8;
+            color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .tab-button:not(.active) {
+            background-color: #e8e8e8;
+            color: #6c757d;
+        }
+        .schedule-item {
+            border-left: 4px solid;
+            transition: background-color 0.2s;
+        }
+        .schedule-item:hover {
+            background-color: #f8f9fa;
+        }
+        .border-kuliah { border-color: #8ab4f8; }
+        .border-ibadah { border-color: #71c9ce; }
+        .border-pengembangan { border-color: #ffc107; }
+        .border-pribadi { border-color: #fd7e14; }
+        .border-istirahat { border-color: #6c757d; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 450px;
+        }
+         @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Jadwal Produktif Satu Tahun</h1>
+            <p class="mt-2 text-lg text-gray-600">Panduan untuk Mahasiswa Informatika</p>
+        </header>
+
+        <div class="card p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-700">Filosofi Jadwal</h2>
+            <p class="text-gray-600 leading-relaxed">Jadwal ini dirancang dengan prinsip <strong class="font-semibold">keseimbangan</strong> dan <strong class="font-semibold">fleksibilitas</strong>. Tujuannya bukan untuk mengisi setiap detik, tetapi untuk menciptakan struktur yang mendukung pertumbuhan akademis, pengembangan diri, kesehatan, dan kehidupan spiritual Anda. Gunakan ini sebagai kerangka, dan jangan ragu untuk menyesuaikannya dengan ritme alami dan kebutuhan Anda. Kunci dari produktivitas jangka panjang adalah konsistensi, bukan intensitas.</p>
+        </div>
+        
+        <main id="app">
+            <div class="flex justify-center space-x-1 md:space-x-2 mb-8 overflow-x-auto pb-2" id="day-tabs">
+                <button data-day="Senin" class="tab-button active text-sm md:text-base">Sen</button>
+                <button data-day="Selasa" class="tab-button text-sm md:text-base">Sel</button>
+                <button data-day="Rabu" class="tab-button text-sm md:text-base">Rab</button>
+                <button data-day="Kamis" class="tab-button text-sm md:text-base">Kam</button>
+                <button data-day="Jumat" class="tab-button text-sm md:text-base">Jum</button>
+                <button data-day="Sabtu" class="tab-button text-sm md:text-base">Sab</button>
+                <button data-day="Minggu" class="tab-button text-sm md:text-base">Min</button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="card p-6" id="schedule-container">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" id="schedule-title">Jadwal Hari Senin</h2>
+                    <div class="space-y-4" id="schedule-content">
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700 text-center">Alokasi Waktu Mingguan</h2>
+                    <p class="text-center text-gray-600 mb-6 text-sm md:text-base">Visualisasi ini membantu Anda melihat bagaimana waktu Anda didistribusikan. Tujuannya adalah mencapai keseimbangan yang sehat antara belajar, berkembang, beribadah, dan beristirahat.</p>
+                    <div class="chart-container">
+                        <canvas id="timeAllocationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+             <div class="card p-6 mt-8">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-700">Fokus Pengembangan Diri</h2>
+                <p class="text-gray-600 mb-6">Sebagai mahasiswa informatika, alokasikan waktu "Pengembangan Diri" Anda untuk kegiatan yang relevan dengan karir masa depan. Berikut adalah beberapa ide yang bisa dirotasi setiap kuartal:</p>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 list-none">
+                    <li class="bg-blue-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-blue-800">🚀 Proyek Pribadi</h3>
+                        <p class="text-blue-700 text-sm">Bangun aplikasi web, mobile, atau automasi sederhana. Ini adalah cara terbaik untuk menerapkan teori dan membangun portofolio.</p>
+                    </li>
+                    <li class="bg-yellow-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-yellow-800">💡 Belajar Teknologi Baru</h3>
+                        <p class="text-yellow-700 text-sm">Fokus pada satu framework (React, Vue, Laravel), bahasa (Python, Go), atau konsep (Cloud Computing, Machine Learning) selama 3 bulan.</p>
+                    </li>
+                    <li class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-green-800">🏆 Latihan Algoritma</h3>
+                        <p class="text-green-700 text-sm">Gunakan platform seperti LeetCode atau HackerRank untuk mengasah kemampuan problem-solving, penting untuk wawancara kerja.</p>
+                    </li>
+                    <li class="bg-purple-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-purple-800">🤝 Kontribusi Open Source</h3>
+                        <p class="text-purple-700 text-sm">Mulai dengan kontribusi kecil seperti memperbaiki dokumentasi. Ini melatih kolaborasi dan pemahaman kode skala besar.</p>
+                    </li>
+                </ul>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const scheduleData = {
+            'Senin': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 07:00', activity: 'Sarapan & Review Materi Kuliah', category: 'pribadi' },
+                { time: '07:00 - 09:30', activity: 'Pengembangan Diri (Sesi Fokus 1)', category: 'pengembangan' },
+                { time: '10:00 - 15:00', activity: 'Kuliah', category: 'kuliah' },
+                { time: '15:00 - 16:00', activity: 'Istirahat & Ibadah Ashar', category: 'istirahat' },
+                { time: '16:00 - 18:00', activity: 'Review Kuliah & Mengerjakan Tugas', category: 'kuliah' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Waktu Santai / Hobi / Sosial', category: 'pribadi' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ],
+            'Selasa': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 07:30', activity: 'Sarapan & Persiapan Kuliah', category: 'pribadi' },
+                { time: '08:00 - 13:00', activity: 'Kuliah', category: 'kuliah' },
+                { time: '13:00 - 14:00', activity: 'Makan Siang & Ibadah Dzuhur', category: 'istirahat' },
+                { time: '14:00 - 16:00', activity: 'Pengembangan Diri (Sesi Fokus 2)', category: 'pengembangan' },
+                { time: '16:00 - 18:00', activity: 'Review Kuliah & Mengerjakan Tugas', category: 'kuliah' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Waktu Santai / Hobi / Sosial', category: 'pribadi' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ],
+            'Rabu': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 07:30', activity: 'Sarapan & Persiapan Kuliah', category: 'pribadi' },
+                { time: '08:00 - 10:30', activity: 'Kuliah', category: 'kuliah' },
+                { time: '10:30 - 12:00', activity: 'Mengerjakan Tugas / Proyek Kelompok', category: 'kuliah' },
+                { time: '12:00 - 13:00', activity: 'Istirahat & Ibadah Dzuhur', category: 'istirahat' },
+                { time: '13:00 - 15:30', activity: 'Pengembangan Diri (Sesi Fokus 3)', category: 'pengembangan' },
+                { time: '15:30 - 18:00', activity: 'Waktu Bebas / Kegiatan Organisasi', category: 'pribadi' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Review Mingguan & Rencana Besok', category: 'pengembangan' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ],
+            'Kamis': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 07:00', activity: 'Sarapan & Review Materi', category: 'pribadi' },
+                { time: '07:00 - 09:30', activity: 'Pengembangan Diri (Sesi Fokus 4)', category: 'pengembangan' },
+                { time: '10:00 - 15:30', activity: 'Kuliah', category: 'kuliah' },
+                { time: '15:30 - 16:30', activity: 'Istirahat & Ibadah Ashar', category: 'istirahat' },
+                { time: '16:30 - 18:00', activity: 'Mengerjakan Tugas', category: 'kuliah' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Waktu Santai / Hobi / Sosial', category: 'pribadi' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ],
+            'Jumat': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 08:00', activity: 'Sarapan & Pengembangan Diri Ringan', category: 'pengembangan' },
+                { time: '08:00 - 11:00', activity: 'Mengerjakan Tugas & Proyek', category: 'kuliah' },
+                { time: '11:00 - 13:00', activity: 'Persiapan & Ibadah Sholat Jumat', category: 'ibadah' },
+                { time: '13:00 - 15:00', activity: 'Kuliah', category: 'kuliah' },
+                { time: '15:00 - 16:00', activity: 'Istirahat & Ibadah Ashar', category: 'istirahat' },
+                { time: '16:00 - 18:00', activity: 'Waktu Bebas / Sosial', category: 'pribadi' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Waktu Bersama Keluarga / Teman', category: 'pribadi' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ],
+            'Sabtu': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 08:00', activity: 'Sarapan Santai & Waktu Bebas', category: 'pribadi' },
+                { time: '08:00 - 12:00', activity: 'Proyek Pribadi / Belajar Mendalam', category: 'pengembangan' },
+                { time: '12:00 - 13:00', activity: 'Istirahat & Ibadah Dzuhur', category: 'istirahat' },
+                { time: '13:00 - 17:00', activity: 'Waktu Sosial / Hobi / Refreshing', category: 'pribadi' },
+                { time: '17:00 - 18:00', activity: 'Bersih-bersih & Persiapan Minggu', category: 'pribadi' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Waktu Berkualitas (Keluarga/Film/Buku)', category: 'pribadi' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ],
+            'Minggu': [
+                { time: '04:00 - 05:30', activity: 'Bangun, Ibadah Subuh & Persiapan Diri', category: 'ibadah' },
+                { time: '05:30 - 06:00', activity: 'Olahraga', category: 'pribadi' },
+                { time: '06:00 - 09:00', activity: 'Sarapan & Waktu Santai', category: 'pribadi' },
+                { time: '09:00 - 12:00', activity: 'Review Materi Seminggu & Perencanaan', category: 'kuliah' },
+                { time: '12:00 - 13:00', activity: 'Istirahat & Ibadah Dzuhur', category: 'istirahat' },
+                { time: '13:00 - 17:00', activity: 'Waktu Bebas Penuh / Refreshing', category: 'pribadi' },
+                { time: '17:00 - 18:00', activity: 'Persiapan untuk Hari Senin', category: 'pengembangan' },
+                { time: '18:00 - 19:30', activity: 'Ibadah Maghrib, Mengaji, Makan Malam', category: 'ibadah' },
+                { time: '19:30 - 21:00', activity: 'Waktu Santai & Relaksasi', category: 'pribadi' },
+                { time: '21:00', activity: 'Tidur', category: 'istirahat' },
+            ]
+        };
+
+        const categoryColors = {
+            kuliah: '#8ab4f8',
+            ibadah: '#71c9ce',
+            pengembangan: '#ffc107',
+            pribadi: '#fd7e14',
+            istirahat: '#6c757d',
+        };
+
+        const categoryBorders = {
+            kuliah: 'border-kuliah',
+            ibadah: 'border-ibadah',
+            pengembangan: 'border-pengembangan',
+            pribadi: 'border-pribadi',
+            istirahat: 'border-istirahat',
+        };
+
+        function renderSchedule(day) {
+            const scheduleContent = document.getElementById('schedule-content');
+            const scheduleTitle = document.getElementById('schedule-title');
+            scheduleContent.innerHTML = '';
+            scheduleTitle.textContent = `Jadwal Hari ${day}`;
+
+            const daySchedule = scheduleData[day];
+            if (!daySchedule) return;
+
+            daySchedule.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `schedule-item p-3 md:p-4 rounded-r-lg flex items-center space-x-4 ${categoryBorders[item.category]}`;
+                
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'w-24 md:w-32 text-xs md:text-sm font-semibold text-gray-700';
+                timeDiv.textContent = item.time;
+                
+                const activityDiv = document.createElement('div');
+                activityDiv.className = 'flex-1 text-sm md:text-base text-gray-800';
+                activityDiv.textContent = item.activity;
+
+                itemDiv.appendChild(timeDiv);
+                itemDiv.appendChild(activityDiv);
+                scheduleContent.appendChild(itemDiv);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSchedule('Senin');
+
+            const dayTabs = document.getElementById('day-tabs');
+            dayTabs.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const currentActive = document.querySelector('.tab-button.active');
+                    if(currentActive) currentActive.classList.remove('active');
+                    e.target.classList.add('active');
+                    const day = e.target.dataset.day;
+                    renderSchedule(day);
+                }
+            });
+
+            const ctx = document.getElementById('timeAllocationChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Kuliah & Tugas', 'Pengembangan Diri', 'Ibadah & Spiritual', 'Waktu Pribadi & Sosial', 'Istirahat & Tidur'],
+                    datasets: [{
+                        label: 'Alokasi Waktu',
+                        data: [27, 20, 15, 18, 20],
+                        backgroundColor: [
+                            categoryColors.kuliah,
+                            categoryColors.pengembangan,
+                            categoryColors.ibadah,
+                            categoryColors.pribadi,
+                            categoryColors.istirahat,
+                        ],
+                        borderColor: '#ffffff',
+                        borderWidth: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                pointStyle: 'rectRounded',
+                                font: {
+                                    size: 12,
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    const item = tooltipItems[0];
+                                    let label = item.chart.data.labels[item.dataIndex];
+                                    if (Array.isArray(label)) {
+                                      return label.join(' ');
+                                    } else {
+                                      return label;
+                                    }
+                                },
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            },
+                             bodyFont: {
+                                size: 14,
+                            },
+                            titleFont: {
+                                size: 16,
+                            },
+                            padding: 12,
+                            cornerRadius: 8,
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
